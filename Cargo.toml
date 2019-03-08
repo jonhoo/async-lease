@@ -1,6 +1,6 @@
 [package]
 name = "async-lease"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Jon Gjengset <jon@thesquareplanet.com>"]
 edition = "2018"
 license = "MIT"
@@ -8,6 +8,11 @@ homepage = "https://github.com/jonhoo/async-lease"
 repository = "https://github.com/jonhoo/async-lease"
 description = "Essentially an asynchronous Mutex<Option<T>>"
 categories = ["asynchronous"]
+
+[badges]
+travis-ci = { repository = "jonhoo/async-lease" }
+codecov = { repository = "jonhoo/async-lease", branch = "master", service = "github" }
+maintenance = { status = "passively-maintained" }
 
 [dependencies]
 futures = "0.1"
