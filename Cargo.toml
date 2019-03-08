@@ -1,0 +1,17 @@
+[package]
+name = "async-lease"
+version = "0.1.0"
+authors = ["Jon Gjengset <jon@thesquareplanet.com>"]
+edition = "2018"
+license = "MIT"
+homepage = "https://github.com/jonhoo/async-lease"
+repository = "https://github.com/jonhoo/async-lease"
+description = "Essentially an asynchronous Mutex<Option<T>>"
+categories = ["asynchronous"]
+
+[dependencies]
+futures = "0.1"
+tokio-sync = "0.1"
+
+[dev-dependencies]
+tokio-mock-task = "0.1"
