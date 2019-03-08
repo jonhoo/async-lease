@@ -25,6 +25,15 @@ macro_rules! assert_not_ready {
 }
 
 #[test]
+fn default() {
+    let mut l: Lease<bool> = Lease::default();
+    assert_ready!(l.poll_acquire());
+    assert_eq!(&*l, &false);
+    assert_eq!(l.take(), false);
+    l.restore(true);
+}
+
+#[test]
 fn straight_execution() {
     let mut l = Lease::from(100);
 
@@ -61,6 +70,20 @@ fn take_twice() {
     assert_ready!(l.poll_acquire());
     assert_eq!(l.take(), 100);
     l.take(); // should panic
+}
+
+#[test]
+#[should_panic]
+fn mut_after_take() {
+    let mut l = Lease::from(100);
+
+    assert_ready!(l.poll_acquire());
+    // at this point we have the lease, so we can mutate directly
+    *l = 99;
+    // then we can take
+    assert_eq!(l.take(), 99);
+    // but now we shouldn't be allowed to mutate any more!
+    *l = 98;
 }
 
 #[test]
