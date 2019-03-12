@@ -1,4 +1,4 @@
-//! An asynchronous, atomic option type.
+//! An asynchronous, atomic option type intended for use with methods that move `self`.
 //!
 //! This module provides `Lease`, a type that acts similarly to an asynchronous `Mutex`, with one
 //! major difference: it expects you to move the leased item _by value_, and then _return it_ when
@@ -7,8 +7,9 @@
 //! the value has returned so we can try to take it again.
 //!
 //! This type is intended for use with methods that take `self` by value, and _eventually_, at some
-//! later point in time, return that `Self` for future use. For example, consider the following
-//! method for a hypothetical, non-pipelined connection type:
+//! later point in time, return that `Self` for future use. This tends to happen particularly often
+//! in future-related contexts. For example, consider the following method for a hypothetical,
+//! non-pipelined connection type:
 //!
 //! ```rust,ignore
 //! impl Connection {

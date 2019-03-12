@@ -1,12 +1,12 @@
 [package]
 name = "async-lease"
-version = "0.1.1"
+version = "0.1.2"
 authors = ["Jon Gjengset <jon@thesquareplanet.com>"]
 edition = "2018"
 license = "MIT"
 homepage = "https://github.com/jonhoo/async-lease"
 repository = "https://github.com/jonhoo/async-lease"
-description = "Essentially an asynchronous Mutex<Option<T>>"
+description = "Essentially a futures-oriented Arc<Mutex<Option<T>>>"
 categories = ["asynchronous"]
 
 [badges]
