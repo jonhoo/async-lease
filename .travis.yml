@@ -24,7 +24,7 @@ jobs:
       rust: stable
       os: linux
     - <<: *check # also test oldest known-good stable
-      rust: 1.31.1
+      rust: 1.39.0
     - stage: test # then run the tests
       rust: stable
       os: osx

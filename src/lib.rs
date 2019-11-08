@@ -33,38 +33,45 @@
 //! again to anyone else who may want to take the value. The example above would thus look like
 //! this:
 //!
-//! ```rust,ignore
+//! ```rust,no_run
+//! # use std::future::Future;
+//! # use std::task::{Poll, Context};
+//! # struct X; impl X { fn get(self, _: i64) -> impl Future<Output = (i64, Self)> { async move { (0, self) } } }
+//! # struct MyConnection { lease: async_lease::Lease<X> }
 //! impl MyConnection {
-//!     fn poll_ready(&mut self) -> Poll<(), Error = Error> {
-//!         self.lease.poll_acquire()
+//!     fn poll_ready(&mut self, cx: &mut Context<'_>) -> Poll<()> {
+//!         self.lease.poll_acquire(cx)
 //!     }
 //!
-//!     fn call(&mut self, key: i64) -> impl Future<Item = i64, Error = Error> {
+//!     fn call(&mut self, key: i64) -> impl Future<Output = i64> {
 //!         // We want to transfer the lease into the future
 //!         // and leave behind an unacquired lease.
 //!         let mut lease = self.lease.transfer();
-//!         lease.take().get(key).map(move |(v, connection)| {
+//!         let fut = lease.take().get(key);
+//!         async move {
+//!             let (v, connection) = fut.await;
+//!
 //!             // Give back the connection for other callers.
 //!             // After this, `poll_ready` may return `Ok(Ready)` again.
 //!             lease.restore(connection);
+//!
 //!             // And yield just the value.
 //!             v
-//!         })
+//!         }
 //!     }
 //! }
 //! ```
-#![deny(
+#![warn(
     unused_extern_crates,
     missing_debug_implementations,
     missing_docs,
     unreachable_pub
 )]
-#![cfg_attr(test, deny(warnings))]
 
-use futures::Async;
 use std::cell::UnsafeCell;
 use std::ops::{Deref, DerefMut};
 use std::sync::Arc;
+use std::task::{Context, Poll};
 use tokio_sync::semaphore;
 
 /// A handle to a leasable value.
@@ -102,12 +109,16 @@ impl<T> Lease<T> {
     /// Try to acquire the lease.
     ///
     /// If the lease is not available, the current task is notified once it is.
-    pub fn poll_acquire(&mut self) -> Async<()> {
-        self.permit.poll_acquire(&self.inner.s).unwrap_or_else(|_| {
-            // The semaphore was closed. but, we never explicitly close it, and we have a
-            // handle to it through the Arc, which means that this can never happen.
-            unreachable!()
-        })
+    pub fn poll_acquire(&mut self, cx: &mut Context<'_>) -> Poll<()> {
+        match self.permit.poll_acquire(cx, &self.inner.s) {
+            Poll::Ready(Ok(())) => Poll::Ready(()),
+            Poll::Ready(Err(_)) => {
+                // The semaphore was closed. but, we never explicitly close it, and we have a
+                // handle to it through the Arc, which means that this can never happen.
+                unreachable!()
+            }
+            Poll::Pending => Poll::Pending,
+        }
     }
 
     /// Release the lease (if it has been acquired).

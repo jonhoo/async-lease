@@ -1,6 +1,6 @@
 [package]
 name = "async-lease"
-version = "0.1.2"
+version = "0.2.0-alpha.1"
 authors = ["Jon Gjengset <jon@thesquareplanet.com>"]
 edition = "2018"
 license = "MIT"
@@ -15,8 +15,7 @@ codecov = { repository = "jonhoo/async-lease", branch = "master", service = "git
 maintenance = { status = "passively-maintained" }
 
 [dependencies]
-futures = "0.1"
-tokio-sync = "0.1"
+tokio-sync = "0.2.0-alpha.6"
 
 [dev-dependencies]
-tokio-mock-task = "0.1"
+tokio-test = "0.2.0-alpha.6"

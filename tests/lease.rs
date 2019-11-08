@@ -1,89 +1,76 @@
-#![deny(warnings)]
-
-extern crate futures;
-extern crate tokio_mock_task;
-
 use async_lease::Lease;
-use tokio_mock_task::*;
-
-macro_rules! assert_ready {
-    ($e:expr) => {{
-        match $e {
-            futures::Async::Ready(v) => v,
-            futures::Async::NotReady => panic!("not ready"),
-        }
-    }};
-}
-
-macro_rules! assert_not_ready {
-    ($e:expr) => {{
-        match $e {
-            futures::Async::NotReady => {}
-            futures::Async::Ready(v) => panic!("ready; value = {:?}", v),
-        }
-    }};
-}
+use tokio_test::*;
 
 #[test]
 fn default() {
-    let mut l: Lease<bool> = Lease::default();
-    assert_ready!(l.poll_acquire());
-    assert_eq!(&*l, &false);
-    assert_eq!(l.take(), false);
-    l.restore(true);
+    task::mock(|cx| {
+        let mut l: Lease<bool> = Lease::default();
+        assert_ready!(l.poll_acquire(cx));
+        assert_eq!(&*l, &false);
+        assert_eq!(l.take(), false);
+        l.restore(true);
+    });
 }
 
 #[test]
 fn straight_execution() {
-    let mut l = Lease::from(100);
+    task::mock(|cx| {
+        let mut l = Lease::from(100);
 
-    // We can immediately acquire the lease and take the value
-    assert_ready!(l.poll_acquire());
-    assert_eq!(&*l, &100);
-    assert_eq!(l.take(), 100);
-    l.restore(99);
+        // We can immediately acquire the lease and take the value
+        assert_ready!(l.poll_acquire(cx));
+        assert_eq!(&*l, &100);
+        assert_eq!(l.take(), 100);
+        l.restore(99);
 
-    // We can immediately acquire again since the value was returned
-    assert_ready!(l.poll_acquire());
-    assert_eq!(l.take(), 99);
-    l.restore(98);
+        // We can immediately acquire again since the value was returned
+        assert_ready!(l.poll_acquire(cx));
+        assert_eq!(l.take(), 99);
+        l.restore(98);
 
-    // Dropping the lease is okay since we returned the value
-    drop(l);
+        // Dropping the lease is okay since we returned the value
+        drop(l);
+    });
 }
 
 #[test]
 fn drop_while_acquired_ok() {
-    let mut l = Lease::from(100);
-    assert_ready!(l.poll_acquire());
+    task::mock(|cx| {
+        let mut l = Lease::from(100);
+        assert_ready!(l.poll_acquire(cx));
 
-    // Dropping the lease while it is still acquired shouldn't
-    // be an issue since we haven't taken the leased value.
-    drop(l);
+        // Dropping the lease while it is still acquired shouldn't
+        // be an issue since we haven't taken the leased value.
+        drop(l);
+    });
 }
 
 #[test]
 #[should_panic]
 fn take_twice() {
-    let mut l = Lease::from(100);
+    task::mock(|cx| {
+        let mut l = Lease::from(100);
 
-    assert_ready!(l.poll_acquire());
-    assert_eq!(l.take(), 100);
-    l.take(); // should panic
+        assert_ready!(l.poll_acquire(cx));
+        assert_eq!(l.take(), 100);
+        l.take(); // should panic
+    });
 }
 
 #[test]
 #[should_panic]
 fn mut_after_take() {
-    let mut l = Lease::from(100);
+    task::mock(|cx| {
+        let mut l = Lease::from(100);
 
-    assert_ready!(l.poll_acquire());
-    // at this point we have the lease, so we can mutate directly
-    *l = 99;
-    // then we can take
-    assert_eq!(l.take(), 99);
-    // but now we shouldn't be allowed to mutate any more!
-    *l = 98;
+        assert_ready!(l.poll_acquire(cx));
+        // at this point we have the lease, so we can mutate directly
+        *l = 99;
+        // then we can take
+        assert_eq!(l.take(), 99);
+        // but now we shouldn't be allowed to mutate any more!
+        *l = 98;
+    });
 }
 
 #[test]
@@ -96,58 +83,68 @@ fn take_wo_acquire() {
 #[test]
 #[should_panic]
 fn drop_without_restore() {
-    let mut l = Lease::from(100);
-    assert_ready!(l.poll_acquire());
-    assert_eq!(l.take(), 100);
-    drop(l); // should panic
+    task::mock(|cx| {
+        let mut l = Lease::from(100);
+        assert_ready!(l.poll_acquire(cx));
+        assert_eq!(l.take(), 100);
+        drop(l); // should panic
+    });
 }
 
 #[test]
 #[should_panic]
 fn release_after_take() {
-    let mut l = Lease::from(100);
-    assert_ready!(l.poll_acquire());
-    assert_eq!(l.take(), 100);
-    l.release(); // should panic
+    task::mock(|cx| {
+        let mut l = Lease::from(100);
+        assert_ready!(l.poll_acquire(cx));
+        assert_eq!(l.take(), 100);
+        l.release(); // should panic
+    });
 }
 
 #[test]
 fn transfer_lease() {
-    let mut l = Lease::from(100);
+    task::mock(|cx| {
+        let mut l = Lease::from(100);
 
-    assert_ready!(l.poll_acquire());
+        assert_ready!(l.poll_acquire(cx));
 
-    // We should be able to transfer the acquired lease
-    let mut l2 = l.transfer();
-    // And then use it as normal
-    assert_eq!(&*l2, &100);
-    assert_eq!(l2.take(), 100);
-    l2.restore(99);
+        // We should be able to transfer the acquired lease
+        let mut l2 = l.transfer();
+        // And then use it as normal
+        assert_eq!(&*l2, &100);
+        assert_eq!(l2.take(), 100);
+        l2.restore(99);
 
-    // Dropping the transferred lease is okay since we returned the value
-    drop(l2);
+        // Dropping the transferred lease is okay since we returned the value
+        drop(l2);
 
-    // Once the transferred lease has been restored, we can acquire the lease again
-    assert_ready!(l.poll_acquire());
-    assert_eq!(l.take(), 99);
-    l.restore(98);
+        // Once the transferred lease has been restored, we can acquire the lease again
+        assert_ready!(l.poll_acquire(cx));
+        assert_eq!(l.take(), 99);
+        l.restore(98);
+    });
 }
 
 #[test]
 fn readiness() {
-    let mut task = MockTask::new();
+    let mut task = task::MockTask::new();
 
     let mut l = Lease::from(100);
-    assert_ready!(l.poll_acquire());
+    task.enter(|cx| {
+        assert_ready!(l.poll_acquire(cx));
+    });
     let mut l2 = l.transfer();
 
     // We can't now acquire the lease since it's already held in l2
-    task.enter(|| {
-        assert_not_ready!(l.poll_acquire());
+    task.enter(|cx| {
+        assert_pending!(l.poll_acquire(cx));
     });
 
     // But once l2 restores the value, we can acquire it
     l2.restore(99);
-    assert!(task.is_notified());
-    assert_ready!(l.poll_acquire());
+    assert!(task.is_woken());
+    task.enter(|cx| {
+        assert_ready!(l.poll_acquire(cx));
+    });
 }
